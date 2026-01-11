@@ -21,7 +21,7 @@ Esta librería proporciona actions y workflows configurables para automatizar el
 1. **deploy-azure-function** - Despliega Azure Functions (Node.js)
 2. **deploy-spring-api** - Despliega APIs Spring Boot
 3. **create-release** - Crea releases automáticamente
-4. **notify-deployment** - Envía notificaciones (Teams, Email)
+4. **notify-deployment** - Envía notificaciones por Email
 5. **setup-azure-credentials** - Configura credenciales Azure
 6. **run-tests** - Ejecuta tests antes del despliegue
 
@@ -39,8 +39,20 @@ Esta librería proporciona actions y workflows configurables para automatizar el
 
 ### 📢 Notificaciones
 
-- Microsoft Teams
 - Email (SMTP)
+
+Secretos configurados **una vez** en el repositorio `azure-workflow-actions`, sin necesidad de configurarlos en proyectos consumidores.
+
+### 🔐 Seguridad con Managed Identity
+
+Las aplicaciones usan **Azure Managed Identity** para acceder a recursos (CosmosDB, Storage, KeyVault) **sin secretos en código**:
+
+- ✅ Sin connection strings hardcodeados
+- ✅ Sin API keys en variables de entorno
+- ✅ Los desarrolladores usan `DefaultAzureCredential`
+- ✅ Azure AD maneja autenticación automáticamente
+
+Ver [SECRETS-SETUP.md](SECRETS-SETUP.md) para guía completa de Managed Identity.
 
 ## 📁 Estructura del Proyecto
 
@@ -83,15 +95,18 @@ Añade estos secrets en tu repositorio:
 
 **Requeridos:**
 - `AZURE_CREDENTIALS` - Credenciales de Azure (JSON)
-
-**Opcionales (Notificaciones):**
-- `NOTIFICATION_WEBHOOK_URL` - Webhook de Teams
+Para notificaciones (configurar en azure-workflow-actions repo):**
 - `EMAIL_TO` - Email destinatario
+- `EMAIL_FROM` - Email remitente (opcional)
+- `SMTP_SERVER` - Servidor SMTP (ej: smtp.gmail.com)
+- `SMTP_PORT` - Puerto SMTP (opcional, default 587
 - `SMTP_SERVER` - Servidor SMTP (ej: smtp.gmail.com)
 - `SMTP_USERNAME` - Usuario SMTP
 - `SMTP_PASSWORD` - Contraseña SMTP
 
-### 2. Crear Workflow en tu Proyecto
+### 2. Consumir desde tu Proyecto (Desarrolladores)
+
+Los desarrolladores **NO necesitan configurar secretos**. Solo crean el workflow:
 
 #### Para Azure Functions:
 
@@ -111,7 +126,6 @@ jobs:
       environment: ${{ github.ref == 'refs/heads/main' && 'prod' || github.ref == 'refs/heads/staging' && 'staging' || 'dev' }}
       create-release-on-success: ${{ github.ref == 'refs/heads/develop' }}
     secrets:
-      AZURE_CREDENTIALS: ${{ secrets.AZURE_CREDENTIALS }}
       NOTIFICATION_WEBHOOK_URL: ${{ secrets.TEAMS_WEBHOOK_URL }}
 ```
 
@@ -134,9 +148,8 @@ jobs:
       environment: ${{ github.ref == 'refs/heads/main' && 'prod' || 'dev' }}
       java-version: '17'
       build-tool: 'maven'
-    secrets:
-      AZURE_CREDENTIALS: ${{ secrets.AZURE_CREDENTIALS }}
-      NOTIFICATION_WEBHOOK_URL: ${{ secrets.TEAMS_WEBHOOK_URL }}
+    # Sin secrets - todo centralizado en azure-workflow-actions
+```
 ```
 
 ## 📖 Uso
@@ -188,9 +201,7 @@ Guarda el output JSON como secret `AZURE_CREDENTIALS`.
 
 1. En Teams, ve a tu canal → Connectors → Incoming Webhook
 2. Copia la URL del webhook
-3. Guárdala como secret `NOTIFICATION_WEBHOOK_URL`
-
-### Notificaciones por Email
+⚠️ **Eliminado** - Ya no se usa Teams, solo notificaciones por Email.
 
 1. Configura un servidor SMTP (Gmail, SendGrid, Office 365, etc.)
 2. Guarda los secrets:

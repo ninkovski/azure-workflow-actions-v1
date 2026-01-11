@@ -1,0 +1,53 @@
+name: Test Email Notification
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Environment to simulate'
+        required: true
+        default: 'dev'
+        type: choice
+        options:
+          - dev
+          - staging
+          - prod
+      status:
+        description: 'Deployment status'
+        required: true
+        default: 'success'
+        type: choice
+        options:
+          - success
+          - failure
+
+jobs:
+  test-notification:
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.environment }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20.x'
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Send Test Email Notification
+        uses: ./.github/actions/notify-deployment
+        env:
+          EMAIL_TO: ${{ secrets.EMAIL_TO }}
+          EMAIL_FROM: ${{ secrets.EMAIL_FROM }}
+          SMTP_SERVER: ${{ secrets.SMTP_SERVER }}
+          SMTP_PORT: ${{ secrets.SMTP_PORT }}
+          SMTP_USERNAME: ${{ secrets.SMTP_USERNAME }}
+          SMTP_PASSWORD: ${{ secrets.SMTP_PASSWORD }}
+        with:
+          environment: ${{ inputs.environment }}
+          status: ${{ inputs.status }}
+          deployment-url: 'https://test-app.azurewebsites.net'
+          additional-info: 'This is a manual test notification'

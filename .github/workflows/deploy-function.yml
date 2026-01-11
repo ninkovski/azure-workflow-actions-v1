@@ -50,25 +50,6 @@ on:
         required: false
         type: boolean
         default: false
-    secrets:
-      AZURE_CREDENTIALS:
-        description: 'Azure credentials'
-        required: true
-      NOTIFICATION_WEBHOOK_URL:
-        description: 'Webhook URL for Teams notifications'
-        required: false
-      EMAIL_TO:
-        description: 'Email address for notifications'
-        required: false
-      SMTP_SERVER:
-        description: 'SMTP server for email notifications'
-        required: false
-      SMTP_USERNAME:
-        description: 'SMTP username'
-        required: false
-      SMTP_PASSWORD:
-        description: 'SMTP password'
-        required: false
     outputs:
       deployment-url:
         description: 'Deployed function URL'
@@ -100,8 +81,9 @@ jobs:
       - name: Deploy Azure Function
         id: deploy-function
         uses: ./.github/actions/deploy-azure-function
+        env:
+          AZURE_CREDENTIALS: ${{ secrets.AZURE_CREDENTIALS }}
         with:
-          azure-credentials: ${{ secrets.AZURE_CREDENTIALS }}
           function-app-name: ${{ inputs.function-app-name }}
           resource-group: ${{ inputs.resource-group }}
           package-path: ${{ inputs.package-path }}
@@ -113,28 +95,29 @@ jobs:
       - name: Send Success Notification
         if: success() && inputs.enable-notifications
         uses: ./.github/actions/notify-deployment
+        env:
+          EMAIL_TO: ${{ secrets.EMAIL_TO }}
+          EMAIL_FROM: ${{ secrets.EMAIL_FROM }}
+          SMTP_SERVER: ${{ secrets.SMTP_SERVER }}
+          SMTP_PORT: ${{ secrets.SMTP_PORT }}
+          SMTP_USERNAME: ${{ secrets.SMTP_USERNAME }}
+          SMTP_PASSWORD: ${{ secrets.SMTP_PASSWORD }}
         with:
-          notification-type: ${{ inputs.notification-type }}
-          webhook-url: ${{ secrets.NOTIFICATION_WEBHOOK_URL }}
-          email-to: ${{ secrets.EMAIL_TO }}
-          smtp-server: ${{ secrets.SMTP_SERVER }}
-          smtp-username: ${{ secrets.SMTP_USERNAME }}
-          smtp-password: ${{ secrets.SMTP_PASSWORD }}
           environment: ${{ inputs.environment }}
           status: 'success'
           deployment-url: ${{ steps.deploy-function.outputs.deployment-url }}
-          app-name: ${{ inputs.function-app-name }}
 
       - name: Send Failure Notification
         if: failure() && inputs.enable-notifications
         uses: ./.github/actions/notify-deployment
+        env:
+          EMAIL_TO: ${{ secrets.EMAIL_TO }}
+          EMAIL_FROM: ${{ secrets.EMAIL_FROM }}
+          SMTP_SERVER: ${{ secrets.SMTP_SERVER }}
+          SMTP_PORT: ${{ secrets.SMTP_PORT }}
+          SMTP_USERNAME: ${{ secrets.SMTP_USERNAME }}
+          SMTP_PASSWORD: ${{ secrets.SMTP_PASSWORD }}
         with:
-          notification-type: ${{ inputs.notification-type }}
-          webhook-url: ${{ secrets.NOTIFICATION_WEBHOOK_URL }}
-          email-to: ${{ secrets.EMAIL_TO }}
-          smtp-server: ${{ secrets.SMTP_SERVER }}
-          smtp-username: ${{ secrets.SMTP_USERNAME }}
-          smtp-password: ${{ secrets.SMTP_PASSWORD }}
           environment: ${{ inputs.environment }}
           status: 'failure'
           app-name: ${{ inputs.function-app-name }}

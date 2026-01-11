@@ -1,7 +1,7 @@
 {
   "name": "notify-deployment",
   "version": "1.0.0",
-  "description": "GitHub Action to notify deployment status via Teams or Email",
+  "description": "Reusable GitHub Actions for Azure deployments with email notifications",
   "main": "dist/index.js",
   "license": "MIT",
   "scripts": {
@@ -10,7 +10,6 @@
   "dependencies": {
     "@actions/core": "^1.11.1",
     "@actions/github": "^6.0.0",
-    "node-fetch": "^3.3.2",
     "nodemailer": "^6.9.13"
   },
   "devDependencies": {

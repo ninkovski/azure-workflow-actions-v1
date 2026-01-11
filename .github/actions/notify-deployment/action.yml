@@ -1,42 +1,10 @@
 name: 'Notify Deployment'
-description: 'Send notifications about deployment status to Teams or Email'
+description: 'Send email notifications about deployment status'
 author: 'Your Name'
 
 inputs:
-  notification-type:
-    description: 'Type of notification (teams, email, all)'
-    required: true
-    default: 'teams'
-  webhook-url:
-    description: 'Webhook URL for Teams'
-    required: false
-    default: ''
-  email-to:
-    description: 'Email address to send notification to'
-    required: false
-    default: ''
-  email-from:
-    description: 'Email address to send notification from'
-    required: false
-    default: 'noreply@azure-deployments.com'
-  smtp-server:
-    description: 'SMTP server for sending emails'
-    required: false
-    default: ''
-  smtp-port:
-    description: 'SMTP port'
-    required: false
-    default: '587'
-  smtp-username:
-    description: 'SMTP username'
-    required: false
-    default: ''
-  smtp-password:
-    description: 'SMTP password'
-    required: false
-    default: ''
   environment:
-    description: 'Deployment environment'
+    description: 'Deployment environment (dev, staging, prod)'
     required: true
   status:
     description: 'Deployment status (success, failure)'
@@ -45,9 +13,10 @@ inputs:
     description: 'URL of the deployed application'
     required: false
     default: ''
-  app-name:
-    description: 'Name of the deployed application'
-    required: true
+  repository-name:
+    description: 'Repository name (auto-detected if not provided)'
+    required: false
+    default: ''
   additional-info:
     description: 'Additional information to include in notification'
     required: false
