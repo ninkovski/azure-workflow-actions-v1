@@ -1,51 +1,87 @@
-# Example: Spring Boot API Deployment Workflow
-
-# This is an example of how to use the azure-workflow-actions
-# in your Spring Boot API project
+# ============================================
+# EJEMPLO: Spring Boot API Deployment Workflow
+# ============================================
+# 📋 INSTRUCCIONES:
+# 1. Copia este archivo a: .github/workflows/deploy.yml en tu proyecto
+# 2. Reemplaza los valores marcados con ⚠️ CAMBIAR
+# 3. Ajusta las ramas según tu estrategia (develop/main)
+# 4. ¡Listo! No necesitas configurar secretos (están centralizados)
 
 name: Deploy Spring API
 
 on:
   push:
     branches:
-      - develop    # Auto-deploy to dev
-      - main       # Auto-deploy to production
+      - develop    # Auto-deploy a dev
+      - staging    # Auto-deploy a staging
+      - main       # Auto-deploy a production
 
 jobs:
-  # Deploy to Development environment
+  # ========================================
+  # AMBIENTE: DESARROLLO
+  # ========================================
   deploy-dev:
     if: github.ref == 'refs/heads/develop'
-    uses: YOUR-ORG/azure-workflow-actions/.github/workflows/deploy-spring-api.yml@main
+    uses: YOUR-ORG/azure-workflow-actions/.github/workflows/deploy-spring-api.yml@main  # ⚠️ CAMBIAR: YOUR-ORG por tu organización
     with:
-      app-name: 'bartolo-api-dev'
-      resource-group: 'bartolo-rg-dev'
-      package-path: './target/bartolo-api-*.jar'
+      # ⚠️ CAMBIAR estos valores según tu proyecto:
+      app-name: 'mi-api-dev'                            # Nombre de tu App Service en dev
+      resource-group: 'mi-rg-dev'                       # Resource Group de dev
+      package-path: './target/mi-api-*.jar'             # Ruta a tu JAR (ajusta el nombre)
+      
+      # ✅ Opcionales - ajusta según necesites:
       environment: 'dev'
-      java-version: '17'
-      build-tool: 'maven'
+      java-version: '17'                                # Cambia si usas Java 11, 21, etc.
+      build-tool: 'maven'                               # O 'gradle' si usas Gradle
       run-tests: true
       enable-notifications: true
-      notification-type: 'teams'
       create-release-on-success: true
-    secrets:
-      AZURE_CREDENTIALS: ${{ secrets.AZURE_CREDENTIALS_DEV }}
-      NOTIFICATION_WEBHOOK_URL: ${{ secrets.TEAMS_WEBHOOK_URL }}
 
-  # Deploy to Production environment (with approval)
+  # ========================================
+  # AMBIENTE: STAGING
+  # ========================================
+  deploy-staging:
+    if: github.ref == 'refs/heads/staging'
+    uses: YOUR-ORG/azure-workflow-actions/.github/workflows/deploy-spring-api.yml@main  # ⚠️ CAMBIAR: YOUR-ORG por tu organización
+    with:
+      # ⚠️ CAMBIAR estos valores según tu proyecto:
+      app-name: 'mi-api-staging'
+      resource-group: 'mi-rg-staging'
+      package-path: './target/mi-api-*.jar'
+      
+      # ✅ Opcionales - ajusta según necesites:
+      environment: 'staging'
+      java-version: '17'
+      build-tool: 'maven'                               # O 'gradle'
+      run-tests: true
+      enable-notifications: true
+      slot-name: 'staging'                              # Deploy a slot de staging
+      create-release-on-success: true
+
+  # ========================================
+  # AMBIENTE: PRODUCCIÓN
+  # ========================================
   deploy-prod:
     if: github.ref == 'refs/heads/main'
-    uses: YOUR-ORG/azure-workflow-actions/.github/workflows/deploy-spring-api.yml@main
+    uses: YOUR-ORG/azure-workflow-actions/.github/workflows/deploy-spring-api.yml@main  # ⚠️ CAMBIAR: YOUR-ORG por tu organización
     with:
-      app-name: 'bartolo-api-prod'
-      resource-group: 'bartolo-rg-prod'
-      package-path: './target/bartolo-api-*.jar'
+      # ⚠️ CAMBIAR estos valores según tu proyecto:
+      app-name: 'mi-api-prod'
+      resource-group: 'mi-rg-prod'
+      package-path: './target/mi-api-*.jar'
+      
+      # ✅ Opcionales - ajusta según necesites:
       environment: 'prod'
       java-version: '17'
-      build-tool: 'maven'
+      build-tool: 'maven'                               # O 'gradle'
       run-tests: true
       enable-notifications: true
-      notification-type: 'all'
-      create-release-on-success: true
-    secrets:
-      AZURE_CREDENTIALS: ${{ secrets.AZURE_CREDENTIALS_PROD }}
-      NOTIFICATION_WEBHOOK_URL: ${{ secrets.TEAMS_WEBHOOK_URL }}
+      create-release-on-success: true                   # Crea release oficial
+
+# ============================================
+# 💡 NOTAS:
+# - NO necesitas configurar secrets en tu repo
+# - Todos los secrets están en azure-workflow-actions
+# - Puedes eliminar ambientes que no uses (dev/staging/prod)
+# - Para Gradle: cambia build-tool a 'gradle' y package-path a './build/libs/*.jar'
+# ============================================

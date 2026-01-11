@@ -1,6 +1,19 @@
-# 📧 Configuración de Secretos (Solo Lead Tech / DevOps)
+# � Guía de Configuración de Secretos
 
-Este documento explica cómo configurar los secretos necesarios para el correcto funcionamiento de los workflows.
+> **👤 Para:** Lead Tech / DevOps / Administradores  
+> **⏱️ Frecuencia:** Configurar UNA VEZ  
+> **📍 Dónde:** Repositorio `azure-workflow-actions` únicamente
+
+## 📋 Tabla de Contenidos
+
+1. [Filosofía y Enfoque](#-filosofía-gobernanza-centralizada--managed-identity)
+2. [Secretos Obligatorios](#-secretos-obligatorios-configurar-una-vez)
+3. [Guía Paso a Paso](#-guía-paso-a-paso)
+4. [Proyectos Consumidores](#-proyectos-consumidores-zero-configuration)
+5. [Managed Identity para Apps](#-managed-identity-para-aplicaciones)
+6. [Verificación y Testing](#-verificación)
+
+---
 
 ## 🎯 Filosofía: Gobernanza Centralizada + Managed Identity
 
@@ -17,40 +30,52 @@ Este documento explica cómo configurar los secretos necesarios para el correcto
 ✅ **Zero Trust**: Sin credenciales en código o CI/CD  
 ✅ **Auditoría**: Fácil seguimiento en Azure AD  
 
-## 🔐 Secretos en azure-workflow-actions (Configurar Una Vez)
+## 🔐 Secretos Obligatorios (Configurar Una Vez)
 
-Estos son los ÚNICOS secretos que se configuran (para infraestructura/CI-CD):
+### 📍 Ubicación
 
-**Settings → Secrets and variables → Actions → New repository secret**
+**Repositorio:** `azure-workflow-actions`  
+**Ruta:** Settings → Secrets and variables → Actions → New repository secret
 
-### Obligatorios para Deployment
+---
 
-```
-AZURE_CREDENTIALS    # JSON del Service Principal de Azure
-```
+### 1️⃣ AZURE_CREDENTIALS (OBLIGATORIO para Deployment)
 
-Este Service Principal solo tiene permisos para:
-- Hacer deploy a Azure App Service / Functions
-- NO tiene acceso a bases de datos
-- NO tiene acceso a secretos de aplicación
+**Descripción:** Credenciales del Service Principal para hacer deploys a Azure
 
-**Crear Service Principal:**
+**Formato:** JSON
+
+**Permisos que tiene:**
+- ✅ Deploy a Azure App Service / Functions
+- ✅ Crear y gestionar recursos en Azure
+
+**Permisos que NO tiene:**
+- ❌ NO acceso a bases de datos (CosmosDB, SQL, etc.)
+- ❌ NO acceso a secretos de aplicación
+- ❌ NO acceso a datos sensibles
+
+**📝 Cómo obtenerlo:**
+
 ```bash
-# Limitar a deployment solamente
+# ⚠️ REEMPLAZA: {subscription-id} y {resource-group}
 az ad sp create-for-rbac --name "github-actions-deploy" \
   --role contributor \
   --scopes /subscriptions/{subscription-id}/resourceGroups/{resource-group} \
   --sdk-auth
 ```
 
-### Obligatorios para Notificaciones por Email
+**💾 Copiar el JSON completo** que devuelve el comando y guardarlo como `AZURE_CREDENTIALS`
 
-```
-EMAIL_TO          # Email destinatario de las notificaciones
-SMTP_SERVER       # Servidor SMTP (ej: smtp.gmail.com, smtp.office365.com)
-SMTP_USERNAME     # Usuario para autenticación SMTP
-SMTP_PASSWORD     # Contraseña o App Password
-```
+---
+
+### 2️⃣ Secretos de Email (OBLIGATORIOS para Notificaciones)
+
+| Secret | Descripción | Ejemplo |
+|--------|-------------|----------|
+| `EMAIL_TO` | Email destinatario de notificaciones | `devops@tuempresa.com` |
+| `SMTP_SERVER` | Servidor SMTP | `smtp.gmail.com` |
+| `SMTP_USERNAME` | Usuario SMTP | `noreply@tuempresa.com` |
+| `SMTP_PASSWORD` | Contraseña o App Password | `tu-password-aqui` |
 
 ### Opcionales
 
@@ -90,22 +115,29 @@ SMTP_USERNAME=apikey
 SMTP_PASSWORD=tu-sendgrid-api-key
 ```
 
-## 🚀 Proyectos Consumidores
+## 🚀 Proyectos Consumidores (Zero Configuration)
 
-Los proyectos que consumen estos workflows **NO necesitan configurar NINGÚN secreto**.
+### ✅ Lo que necesitan los desarrolladores: NADA
 
-Los desarrolladores solo crean el archivo `.github/workflows/deploy.yml` con inputs públicos:
+Los proyectos que usan estos workflows **NO configuran secretos**.
+
+### 📝 Solo copian el ejemplo de workflow:
 
 ```yaml
+# .github/workflows/deploy.yml en TU proyecto
 jobs:
   deploy:
     uses: TU-ORG/azure-workflow-actions/.github/workflows/deploy-function.yml@main
     with:
-      function-app-name: mi-app
-      resource-group: mi-rg
+      function-app-name: mi-app          # ⚠️ Cambiar por tu app
+      resource-group: mi-rg              # ⚠️ Cambiar por tu RG
       environment: prod
-    # NO hay secrets - todo está en azure-workflow-actions
+    # ✅ NO hay secrets - todo está centralizado
 ```
+
+### 🎯 Ventaja Principal
+
+**UNA configuración de secretos → ∞ proyectos pueden deployar**
 
 ### Beneficios para Desarrolladores
 
@@ -122,47 +154,112 @@ jobs:
 ✅ Fácil revocar acceso (cambiar Service Principal)  
 ✅ Cumplimiento de políticas de seguridad  
 
-## 📝 Cómo Crear AZURE_CREDENTIALS (Para Lead Tech)
+## 📝 Guía Paso a Paso
 
-### Opción 1: Por Resource Group (Recomendado)
+### Paso 1: Crear Service Principal
+
+#### Opción A: Por Resource Group (✅ Recomendado - Más Seguro)
+
+**🔒 Ventaja:** Solo puede deployar a UN resource group específico
 
 ```bash
-# Limitar acceso a un resource group específico
-az ad sp create-for-rbac --name "github-actions-rg-staging" \
+# ⚠️ REEMPLAZA los valores entre {}
+az ad sp create-for-rbac --name "github-actions-deploy-{ambiente}" \
   --role contributor \
-  --scopes /subscriptions/{subscription-id}/resourceGroups/{resource-group-staging} \
+  --scopes /subscriptions/{subscription-id}/resourceGroups/{resource-group} \
   --sdk-auth
 ```
 
-### Opción 2: Por Subscripción (Más Amplio)
+**💾 Guarda el JSON que devuelve**
+
+---
+
+#### Opción B: Por Subscripción (⚠️ Más Permisivo)
+
+**⚠️ Advertencia:** Puede deployar a CUALQUIER resource group de la subscripción
 
 ```bash
-# Acceso a toda la subscripción (úsalo con precaución)
+# ⚠️ REEMPLAZA {subscription-id}
 az ad sp create-for-rbac --name "github-actions-deploy" \
   --role contributor \
   --scopes /subscriptions/{subscription-id} \
   --sdk-auth
 ```
 
-### Opción 3: Múltiples Environments
+---
 
-Puedes crear Service Principals diferentes por environment y usar GitHub Environments:
+#### Opción C: Múltiples Service Principals por Ambiente (🏆 Mejor Práctica)
+
+**🎯 Enfoque:** Un Service Principal diferente por cada ambiente
 
 ```bash
-# Dev
+# 1. Service Principal para DEV
 az ad sp create-for-rbac --name "github-actions-dev" \
   --role contributor \
   --scopes /subscriptions/{sub-id}/resourceGroups/rg-dev \
   --sdk-auth
 
-# Prod
+# 2. Service Principal para STAGING  
+az ad sp create-for-rbac --name "github-actions-staging" \
+  --role contributor \
+  --scopes /subscriptions/{sub-id}/resourceGroups/rg-staging \
+  --sdk-auth
+
+# 3. Service Principal para PROD
 az ad sp create-for-rbac --name "github-actions-prod" \
   --role contributor \
   --scopes /subscriptions/{sub-id}/resourceGroups/rg-prod \
   --sdk-auth
 ```
 
-Luego configura GitHub Environments en `azure-workflow-actions` con secretos específicos.
+**⚙️ Configuración en GitHub:**
+- Ve a Settings → Environments en `azure-workflow-actions`
+- Crea environments: `dev`, `staging`, `prod`
+- Asigna el `AZURE_CREDENTIALS` correspondiente a cada environment
+- (Opcional) Añade Protection Rules para `prod` (requiere aprobación)
+
+---
+
+### Paso 2: Configurar Secretos en GitHub
+
+**📍 Repositorio:** `azure-workflow-actions`
+
+1. **Ve a Settings del repositorio**
+2. **Secrets and variables → Actions**
+3. **New repository secret**
+4. **Agrega cada secret:**
+
+```
+Nombre: AZURE_CREDENTIALS
+Valor: {pega el JSON completo del paso 1}
+
+Nombre: EMAIL_TO
+Valor: devops@tuempresa.com
+
+Nombre: SMTP_SERVER
+Valor: smtp.gmail.com
+
+Nombre: SMTP_USERNAME  
+Valor: noreply@tuempresa.com
+
+Nombre: SMTP_PASSWORD
+Valor: tu-app-password
+```
+
+**Opcionales:**
+```
+Nombre: EMAIL_FROM
+Valor: noreply@azure-deployments.com
+
+Nombre: SMTP_PORT
+Valor: 587
+```
+
+---
+
+### Paso 3: Configurar Managed Identity en Apps (Ver sección abajo)
+
+---
 
 ## ✅ Verificación
 
@@ -173,35 +270,49 @@ Para probar que los secretos están configurados correctamente:
 
 ---
 
-## 🔑 Secretos de Aplicación (Bases de Datos, APIs, etc.)
+## 🔑 Managed Identity para Aplicaciones
 
-### ⚠️ Importante: NO se configuran en GitHub
+### ⚠️ Regla de Oro: Secretos de App NO van en GitHub
 
-Los secretos de aplicación (connection strings, API keys, etc.) **NO se manejan en GitHub Actions ni en variables de entorno**.
+**❌ NO configurar en GitHub:**
+- Connection strings de bases de datos
+- API keys de servicios
+- Passwords de Redis, Storage, etc.
 
-### ✅ Enfoque Recomendado: Managed Identity + Azure KeyVault
+**✅ Usar en su lugar:**
+- **Managed Identity** para recursos Azure (CosmosDB, Storage, KeyVault)
+- **Azure KeyVault** para secretos de terceros (APIs externas)
 
-#### Arquitectura de Seguridad
+---
+
+### 🎯 Enfoque: Managed Identity + DefaultAzureCredential
+
+### 📐 Arquitectura de Seguridad (Sin Secretos)
 
 ```
-┌─────────────────┐
-│   Azure App     │
-│   Service /     │──┐
-│   Function      │  │ Managed Identity
-└─────────────────┘  │ (sin secretos)
-                     │
-                     ▼
-           ┌─────────────────────┐
-           │  Azure AD           │
-           │  (Identidad)        │
-           └─────────────────────┘
-                     │
-        ┌────────────┼────────────┐
-        ▼            ▼            ▼
-  ┌─────────┐  ┌─────────┐  ┌─────────┐
-  │Cosmos DB│  │KeyVault │  │ Storage │
-  └─────────┘  └─────────┘  └─────────┘
-  (sin creds)  (sin creds)  (sin creds)
+┌──────────────────────────┐
+│  Tu App (Function/API)   │
+│  ✅ SIN connection strings │
+│  ✅ SIN passwords         │
+│  ✅ DefaultAzureCredential│
+└────────────┬─────────────┘
+             │
+             │ Managed Identity
+             │ (Azure AD maneja todo)
+             ▼
+    ┌────────────────────┐
+    │    Azure AD        │
+    │  (Autenticación)   │
+    └────────┬───────────┘
+             │
+   ┌─────────┼──────────┐
+   ▼         ▼          ▼
+┌────────┐ ┌────────┐ ┌─────────┐
+│Cosmos  │ │KeyVault│ │ Storage │
+│  DB    │ │        │ │ Account │
+└────────┘ └────────┘ └─────────┘
+ ✅ Sin    ✅ Sin     ✅ Sin
+ credenciales credenciales credenciales
 ```
 
 #### Paso 1: Habilitar Managed Identity en tu App/Function
