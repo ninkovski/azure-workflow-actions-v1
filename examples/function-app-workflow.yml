@@ -1,0 +1,77 @@
+# Example: Azure Function Deployment Workflow
+
+# This is an example of how to use the azure-workflow-actions
+# in your Azure Function project
+
+name: Deploy Azure Function
+
+on:
+  push:
+    branches:
+      - develop    # Auto-deploy to dev
+      - staging    # Auto-deploy to staging
+      - main       # Auto-deploy to production
+
+jobs:
+  # Deploy to Development environment
+  deploy-dev:
+    if: github.ref == 'refs/heads/develop'
+    uses: YOUR-ORG/azure-workflow-actions/.github/workflows/deploy-function.yml@main
+    with:
+      function-app-name: 'bartolo-function-dev'
+      resource-group: 'bartolo-rg-dev'
+      package-path: './function-process-payment'
+      environment: 'dev'
+      node-version: '18.x'
+      run-tests: true
+      enable-notifications: true
+      notification-type: 'teams'
+      create-release-on-success: true  # Creates a pre-release on successful deploy
+    secrets:
+      AZURE_CREDENTIALS: ${{ secrets.AZURE_CREDENTIALS_DEV }}
+      NOTIFICATION_WEBHOOK_URL: ${{ secrets.TEAMS_WEBHOOK_URL }}
+      EMAIL_TO: ${{ secrets.EMAIL_TO }}
+      SMTP_SERVER: ${{ secrets.SMTP_SERVER }}
+      SMTP_USERNAME: ${{ secrets.SMTP_USERNAME }}
+      SMTP_PASSWORD: ${{ secrets.SMTP_PASSWORD }}
+
+  # Deploy to Staging environment
+  deploy-staging:
+    if: github.ref == 'refs/heads/staging'
+    uses: YOUR-ORG/azure-workflow-actions/.github/workflows/deploy-function.yml@main
+    with:
+      function-app-name: 'bartolo-function-staging'
+      resource-group: 'bartolo-rg-staging'
+      package-path: './function-process-payment'
+      environment: 'staging'
+      node-version: '18.x'
+      run-tests: true
+      enable-notifications: true
+      notification-type: 'teams'
+      slot-name: 'staging'  # Deploy to staging slot
+      create-release-on-success: true
+    secrets:
+      AZURE_CREDENTIALS: ${{ secrets.AZURE_CREDENTIALS_STAGING }}
+      NOTIFICATION_WEBHOOK_URL: ${{ secrets.TEAMS_WEBHOOK_URL }}
+
+  # Deploy to Production environment
+  deploy-prod:
+    if: github.ref == 'refs/heads/main'
+    uses: YOUR-ORG/azure-workflow-actions/.github/workflows/deploy-function.yml@main
+    with:
+      function-app-name: 'bartolo-function-prod'
+      resource-group: 'bartolo-rg-prod'
+      package-path: './function-process-payment'
+      environment: 'prod'Email
+      create-release-on-success: true  # Creates official release
+    secrets:
+      AZURE_CREDENTIALS: ${{ secrets.AZURE_CREDENTIALS_PROD }}
+      NOTIFICATION_WEBHOOK_URL: ${{ secrets.TEAMS_WEBHOOK_URL }}
+      EMAIL_TO: ${{ secrets.EMAIL_TO }}
+      SMTP_SERVER: ${{ secrets.SMTP_SERVER }}
+      SMTP_USERNAME: ${{ secrets.SMTP_USERNAME }}
+      SMTP_PASSWORD: ${{ secrets.SMTP_PASSWORD
+      create-release-on-success: true  # Creates official release
+    secrets:
+      AZURE_CREDENTIALS: ${{ secrets.AZURE_CREDENTIALS_PROD }}
+      NOTIFICATION_WEBHOOK_URL: ${{ secrets.TEAMS_WEBHOOK_URL }}

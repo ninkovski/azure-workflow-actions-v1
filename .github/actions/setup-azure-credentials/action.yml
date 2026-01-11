@@ -1,0 +1,42 @@
+name: 'Setup Azure Credentials'
+description: 'Configure Azure authentication for deployment'
+author: 'Your Name'
+
+inputs:
+  azure-credentials:
+    description: 'Azure credentials JSON'
+    required: true
+  subscription-id:
+    description: 'Azure Subscription ID (optional if in credentials)'
+    required: false
+    default: ''
+
+outputs:
+  subscription-id:
+    description: 'Azure Subscription ID'
+    value: ${{ steps.parse-creds.outputs.subscription-id }}
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Azure Login
+      uses: azure/login@v1
+      with:
+        creds: ${{ inputs.azure-credentials }}
+
+    - name: Parse credentials
+      id: parse-creds
+      shell: bash
+      run: |
+        if [ -n "${{ inputs.subscription-id }}" ]; then
+          echo "subscription-id=${{ inputs.subscription-id }}" >> $GITHUB_OUTPUT
+        else
+          SUBSCRIPTION_ID=$(echo '${{ inputs.azure-credentials }}' | jq -r '.subscriptionId')
+          echo "subscription-id=${SUBSCRIPTION_ID}" >> $GITHUB_OUTPUT
+        fi
+
+    - name: Set Azure Subscription
+      shell: bash
+      run: |
+        az account set --subscription ${{ steps.parse-creds.outputs.subscription-id }}
+        echo "✅ Azure credentials configured successfully" >> $GITHUB_STEP_SUMMARY

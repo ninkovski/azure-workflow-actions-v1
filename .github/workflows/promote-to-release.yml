@@ -1,0 +1,74 @@
+name: Promote to Release (Reusable)
+
+on:
+  workflow_call:
+    inputs:
+      source-environment:
+        description: 'Source environment (e.g., dev, staging)'
+        required: true
+        type: string
+      trigger-on-success:
+        description: 'Only trigger if source deployment was successful'
+        required: false
+        type: boolean
+        default: true
+      tag-prefix:
+        description: 'Prefix for release tag'
+        required: false
+        type: string
+        default: 'release'
+      include-deployment-url:
+        description: 'Include deployment URL in release notes'
+        required: false
+        type: boolean
+        default: true
+      deployment-url:
+        description: 'URL of the deployed application'
+        required: false
+        type: string
+        default: ''
+      prerelease:
+        description: 'Mark as pre-release'
+        required: false
+        type: boolean
+        default: false
+    outputs:
+      release-id:
+        description: 'Created release ID'
+        value: ${{ jobs.create-release.outputs.release-id }}
+      release-url:
+        description: 'Created release URL'
+        value: ${{ jobs.create-release.outputs.release-url }}
+
+jobs:
+  create-release:
+    runs-on: ubuntu-latest
+    outputs:
+      release-id: ${{ steps.create.outputs.release-id }}
+      release-url: ${{ steps.create.outputs.release-url }}
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Fetch all history for release notes
+
+      - name: Generate version tag
+        id: version
+        run: |
+          VERSION=$(date +%Y.%m.%d)-${GITHUB_SHA:0:7}
+          TAG_NAME="${{ inputs.tag-prefix }}-${VERSION}"
+          echo "tag-name=${TAG_NAME}" >> $GITHUB_OUTPUT
+          echo "version=${VERSION}" >> $GITHUB_OUTPUT
+
+      - name: Create Release
+        id: create
+        uses: ./.github/actions/create-release
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          tag-name: ${{ steps.version.outputs.tag-name }}
+          release-name: "Release ${{ steps.version.outputs.version }}"
+          environment: ${{ inputs.source-environment }}
+          deployment-url: ${{ inputs.include-deployment-url && inputs.deployment-url || '' }}
+          prerelease: ${{ inputs.prerelease }}
+          generate-notes: true

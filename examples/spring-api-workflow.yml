@@ -1,0 +1,51 @@
+# Example: Spring Boot API Deployment Workflow
+
+# This is an example of how to use the azure-workflow-actions
+# in your Spring Boot API project
+
+name: Deploy Spring API
+
+on:
+  push:
+    branches:
+      - develop    # Auto-deploy to dev
+      - main       # Auto-deploy to production
+
+jobs:
+  # Deploy to Development environment
+  deploy-dev:
+    if: github.ref == 'refs/heads/develop'
+    uses: YOUR-ORG/azure-workflow-actions/.github/workflows/deploy-spring-api.yml@main
+    with:
+      app-name: 'bartolo-api-dev'
+      resource-group: 'bartolo-rg-dev'
+      package-path: './target/bartolo-api-*.jar'
+      environment: 'dev'
+      java-version: '17'
+      build-tool: 'maven'
+      run-tests: true
+      enable-notifications: true
+      notification-type: 'teams'
+      create-release-on-success: true
+    secrets:
+      AZURE_CREDENTIALS: ${{ secrets.AZURE_CREDENTIALS_DEV }}
+      NOTIFICATION_WEBHOOK_URL: ${{ secrets.TEAMS_WEBHOOK_URL }}
+
+  # Deploy to Production environment (with approval)
+  deploy-prod:
+    if: github.ref == 'refs/heads/main'
+    uses: YOUR-ORG/azure-workflow-actions/.github/workflows/deploy-spring-api.yml@main
+    with:
+      app-name: 'bartolo-api-prod'
+      resource-group: 'bartolo-rg-prod'
+      package-path: './target/bartolo-api-*.jar'
+      environment: 'prod'
+      java-version: '17'
+      build-tool: 'maven'
+      run-tests: true
+      enable-notifications: true
+      notification-type: 'all'
+      create-release-on-success: true
+    secrets:
+      AZURE_CREDENTIALS: ${{ secrets.AZURE_CREDENTIALS_PROD }}
+      NOTIFICATION_WEBHOOK_URL: ${{ secrets.TEAMS_WEBHOOK_URL }}

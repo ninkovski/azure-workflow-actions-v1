@@ -1,0 +1,25 @@
+{
+  "teams": {
+    "success": {
+      "title": "✅ Deployment Successful",
+      "color": "28a745",
+      "summary": "Deployment to {{environment}} completed successfully"
+    },
+    "failure": {
+      "title": "❌ Deployment Failed",
+      "color": "dc3545",
+      "summary": "Deployment to {{environment}} failed"
+    }
+  },
+
+  "email": {
+    "success": {
+      "subject": "✅ Deployment Successful - {{app_name}} to {{environment}}",
+      "template": "deployment-success"
+    },
+    "failure": {
+      "subject": "❌ Deployment Failed - {{app_name}} to {{environment}}",
+      "template": "deployment-failure"
+    }
+  }
+}

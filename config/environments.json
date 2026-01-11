@@ -1,0 +1,56 @@
+{
+  "environments": {
+    "dev": {
+      "name": "Development",
+      "create_release_on_deploy": true,
+      "prerelease": true,
+      "run_tests": true,
+      "enable_notifications": true,
+      "notification_channels": ["teams"],
+      "auto_approve": false,
+      "deployment_slot": "dev"
+    },
+    "staging": {
+      "name": "Staging",
+      "create_release_on_deploy": true,
+      "prerelease": true,
+      "run_tests": true,
+      "enable_notifications": true,
+      "notification_channels": ["teams", "email"],
+      "auto_approve": false,
+      "deployment_slot": "staging"
+    },
+    "prod": {
+      "name": "Production",
+      "create_release_on_deploy": true,
+      "prerelease": false,
+      "run_tests": true,
+      "enable_notifications": true,
+      "notification_channels": ["teams", "email"],
+      "auto_approve": false,
+      "deployment_slot": ""
+    }
+  },
+  "azure": {
+    "function_apps": {
+      "nodejs_runtime": "18.x",
+      "enable_oryx_build": true
+    },
+    "app_services": {
+      "java_version": "17",
+      "build_tool": "maven"
+    }
+  },
+  "notifications": {
+    "teams": {
+      "enabled": true,
+      "on_success": true,
+      "on_failure": true
+    },
+    "email": {
+      "enabled": true,
+      "on_success": true,
+      "on_failure": true
+    }
+  }
+}

@@ -1,0 +1,118 @@
+name: 'Deploy Azure Function'
+description: 'Deploy Azure Functions with configurable options per environment'
+author: 'Your Name'
+
+inputs:
+  azure-credentials:
+    description: 'Azure credentials JSON'
+    required: true
+  function-app-name:
+    description: 'Name of the Azure Function App'
+    required: true
+  resource-group:
+    description: 'Azure Resource Group name'
+    required: true
+  package-path:
+    description: 'Path to the function app package'
+    required: false
+    default: '.'
+  environment:
+    description: 'Deployment environment (dev, staging, prod)'
+    required: true
+  node-version:
+    description: 'Node.js version'
+    required: false
+    default: '18.x'
+  run-tests:
+    description: 'Run tests before deployment'
+    required: false
+    default: 'true'
+  slot-name:
+    description: 'Deployment slot name (empty for production slot)'
+    required: false
+    default: ''
+  enable-oryx-build:
+    description: 'Enable Oryx build'
+    required: false
+    default: 'true'
+
+outputs:
+  deployment-url:
+    description: 'URL of the deployed function app'
+    value: ${{ steps.deploy.outputs.webapp-url }}
+  deployment-status:
+    description: 'Status of the deployment'
+    value: ${{ steps.deploy.outcome }}
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ inputs.node-version }}
+        cache: 'npm'
+        cache-dependency-path: ${{ inputs.package-path }}/package-lock.json
+
+    - name: Install dependencies
+      shell: bash
+      working-directory: ${{ inputs.package-path }}
+      run: npm ci --production
+
+    - name: Run tests
+      if: inputs.run-tests == 'true'
+      shell: bash
+      working-directory: ${{ inputs.package-path }}
+      run: |
+        if [ -f "package.json" ] && grep -q '"test"' package.json; then
+          npm test
+        else
+          echo "No tests found, skipping..."
+        fi
+
+    - name: Azure Login
+      uses: azure/login@v1
+      with:
+        creds: ${{ inputs.azure-credentials }}
+
+    - name: Deploy to Azure Function App (Production Slot)
+      if: inputs.slot-name == ''
+      id: deploy-prod
+      uses: Azure/functions-action@v1
+      with:
+        app-name: ${{ inputs.function-app-name }}
+        package: ${{ inputs.package-path }}
+        enable-oryx-build: ${{ inputs.enable-oryx-build }}
+
+    - name: Deploy to Azure Function App (Deployment Slot)
+      if: inputs.slot-name != ''
+      id: deploy-slot
+      uses: Azure/functions-action@v1
+      with:
+        app-name: ${{ inputs.function-app-name }}
+        slot-name: ${{ inputs.slot-name }}
+        package: ${{ inputs.package-path }}
+        enable-oryx-build: ${{ inputs.enable-oryx-build }}
+
+    - name: Set deployment output
+      id: deploy
+      shell: bash
+      run: |
+        if [ "${{ inputs.slot-name }}" == "" ]; then
+          echo "webapp-url=${{ steps.deploy-prod.outputs.app-url }}" >> $GITHUB_OUTPUT
+        else
+          echo "webapp-url=${{ steps.deploy-slot.outputs.app-url }}" >> $GITHUB_OUTPUT
+        fi
+
+    - name: Deployment Summary
+      shell: bash
+      run: |
+        echo "### Deployment Summary :rocket:" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "- **Function App**: ${{ inputs.function-app-name }}" >> $GITHUB_STEP_SUMMARY
+        echo "- **Environment**: ${{ inputs.environment }}" >> $GITHUB_STEP_SUMMARY
+        echo "- **Resource Group**: ${{ inputs.resource-group }}" >> $GITHUB_STEP_SUMMARY
+        if [ "${{ inputs.slot-name }}" != "" ]; then
+          echo "- **Slot**: ${{ inputs.slot-name }}" >> $GITHUB_STEP_SUMMARY
+        fi
+        echo "- **Status**: ✅ Success" >> $GITHUB_STEP_SUMMARY

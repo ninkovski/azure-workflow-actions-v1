@@ -1,0 +1,157 @@
+name: Deploy Azure Function (Reusable)
+
+on:
+  workflow_call:
+    inputs:
+      function-app-name:
+        description: 'Azure Function App name'
+        required: true
+        type: string
+      resource-group:
+        description: 'Azure Resource Group'
+        required: true
+        type: string
+      environment:
+        description: 'Deployment environment (dev, staging, prod)'
+        required: true
+        type: string
+      package-path:
+        description: 'Path to function app'
+        required: false
+        type: string
+        default: '.'
+      node-version:
+        description: 'Node.js version'
+        required: false
+        type: string
+        default: '18.x'
+      run-tests:
+        description: 'Run tests before deployment'
+        required: false
+        type: boolean
+        default: true
+      slot-name:
+        description: 'Deployment slot name'
+        required: false
+        type: string
+        default: ''
+      enable-notifications:
+        description: 'Enable deployment notifications'
+        required: false
+        type: boolean
+        default: true
+      notification-type:
+        description: 'Notification type (teams, email, all)'
+        required: false
+        type: string
+        default: 'teams'
+      create-release-on-success:
+        description: 'Create release after successful deployment'
+        required: false
+        type: boolean
+        default: false
+    secrets:
+      AZURE_CREDENTIALS:
+        description: 'Azure credentials'
+        required: true
+      NOTIFICATION_WEBHOOK_URL:
+        description: 'Webhook URL for Teams notifications'
+        required: false
+      EMAIL_TO:
+        description: 'Email address for notifications'
+        required: false
+      SMTP_SERVER:
+        description: 'SMTP server for email notifications'
+        required: false
+      SMTP_USERNAME:
+        description: 'SMTP username'
+        required: false
+      SMTP_PASSWORD:
+        description: 'SMTP password'
+        required: false
+    outputs:
+      deployment-url:
+        description: 'Deployed function URL'
+        value: ${{ jobs.deploy.outputs.deployment-url }}
+      deployment-status:
+        description: 'Deployment status'
+        value: ${{ jobs.deploy.outputs.deployment-status }}
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.environment }}
+    outputs:
+      deployment-url: ${{ steps.deploy-function.outputs.deployment-url }}
+      deployment-status: ${{ steps.deploy-function.outputs.deployment-status }}
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Run tests
+        if: inputs.run-tests
+        uses: ./.github/actions/run-tests
+        with:
+          project-type: 'nodejs'
+          working-directory: ${{ inputs.package-path }}
+          node-version: ${{ inputs.node-version }}
+
+      - name: Deploy Azure Function
+        id: deploy-function
+        uses: ./.github/actions/deploy-azure-function
+        with:
+          azure-credentials: ${{ secrets.AZURE_CREDENTIALS }}
+          function-app-name: ${{ inputs.function-app-name }}
+          resource-group: ${{ inputs.resource-group }}
+          package-path: ${{ inputs.package-path }}
+          environment: ${{ inputs.environment }}
+          node-version: ${{ inputs.node-version }}
+          run-tests: 'false'  # Tests already ran
+          slot-name: ${{ inputs.slot-name }}
+
+      - name: Send Success Notification
+        if: success() && inputs.enable-notifications
+        uses: ./.github/actions/notify-deployment
+        with:
+          notification-type: ${{ inputs.notification-type }}
+          webhook-url: ${{ secrets.NOTIFICATION_WEBHOOK_URL }}
+          email-to: ${{ secrets.EMAIL_TO }}
+          smtp-server: ${{ secrets.SMTP_SERVER }}
+          smtp-username: ${{ secrets.SMTP_USERNAME }}
+          smtp-password: ${{ secrets.SMTP_PASSWORD }}
+          environment: ${{ inputs.environment }}
+          status: 'success'
+          deployment-url: ${{ steps.deploy-function.outputs.deployment-url }}
+          app-name: ${{ inputs.function-app-name }}
+
+      - name: Send Failure Notification
+        if: failure() && inputs.enable-notifications
+        uses: ./.github/actions/notify-deployment
+        with:
+          notification-type: ${{ inputs.notification-type }}
+          webhook-url: ${{ secrets.NOTIFICATION_WEBHOOK_URL }}
+          email-to: ${{ secrets.EMAIL_TO }}
+          smtp-server: ${{ secrets.SMTP_SERVER }}
+          smtp-username: ${{ secrets.SMTP_USERNAME }}
+          smtp-password: ${{ secrets.SMTP_PASSWORD }}
+          environment: ${{ inputs.environment }}
+          status: 'failure'
+          app-name: ${{ inputs.function-app-name }}
+
+  create-release:
+    needs: deploy
+    if: inputs.create-release-on-success && success()
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Create Release
+        uses: ./.github/actions/create-release
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          environment: ${{ inputs.environment }}
+          deployment-url: ${{ needs.deploy.outputs.deployment-url }}
+          prerelease: ${{ inputs.environment != 'prod' }}

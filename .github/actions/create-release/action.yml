@@ -1,0 +1,100 @@
+name: 'Create Release'
+description: 'Automatically create GitHub releases after successful deployments'
+author: 'Your Name'
+
+inputs:
+  github-token:
+    description: 'GitHub token for creating releases'
+    required: true
+  tag-name:
+    description: 'Tag name for the release (auto-generated if empty)'
+    required: false
+    default: ''
+  release-name:
+    description: 'Release name (auto-generated if empty)'
+    required: false
+    default: ''
+  environment:
+    description: 'Environment that was deployed (dev, staging, prod)'
+    required: true
+  deployment-url:
+    description: 'URL of the deployed application'
+    required: false
+    default: ''
+  create-tag:
+    description: 'Create a git tag'
+    required: false
+    default: 'true'
+  prerelease:
+    description: 'Mark as pre-release'
+    required: false
+    default: 'false'
+  generate-notes:
+    description: 'Auto-generate release notes'
+    required: false
+    default: 'true'
+
+outputs:
+  release-id:
+    description: 'ID of the created release'
+    value: ${{ steps.create-release.outputs.id }}
+  release-url:
+    description: 'URL of the created release'
+    value: ${{ steps.create-release.outputs.html_url }}
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Generate tag name
+      id: generate-tag
+      shell: bash
+      run: |
+        if [ -z "${{ inputs.tag-name }}" ]; then
+          TIMESTAMP=$(date +%Y%m%d-%H%M%S)
+          TAG_NAME="${{ inputs.environment }}-${TIMESTAMP}"
+        else
+          TAG_NAME="${{ inputs.tag-name }}"
+        fi
+        echo "tag-name=${TAG_NAME}" >> $GITHUB_OUTPUT
+
+    - name: Generate release name
+      id: generate-name
+      shell: bash
+      run: |
+        if [ -z "${{ inputs.release-name }}" ]; then
+          RELEASE_NAME="Release ${{ steps.generate-tag.outputs.tag-name }}"
+        else
+          RELEASE_NAME="${{ inputs.release-name }}"
+        fi
+        echo "release-name=${RELEASE_NAME}" >> $GITHUB_OUTPUT
+
+    - name: Create Release
+      id: create-release
+      uses: actions/create-release@v1
+      env:
+        GITHUB_TOKEN: ${{ inputs.github-token }}
+      with:
+        tag_name: ${{ steps.generate-tag.outputs.tag-name }}
+        release_name: ${{ steps.generate-name.outputs.release-name }}
+        body: |
+          ## Deployment Details
+          
+          - **Environment**: ${{ inputs.environment }}
+          - **Deployed at**: ${{ github.event.head_commit.timestamp }}
+          - **Commit**: ${{ github.sha }}
+          - **Author**: ${{ github.actor }}
+          ${{ inputs.deployment-url != '' && format('- **URL**: {0}', inputs.deployment-url) || '' }}
+          
+          ### Changes
+          ${{ github.event.head_commit.message }}
+        draft: false
+        prerelease: ${{ inputs.prerelease }}
+
+    - name: Release Summary
+      shell: bash
+      run: |
+        echo "### Release Created :tada:" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "- **Tag**: ${{ steps.generate-tag.outputs.tag-name }}" >> $GITHUB_STEP_SUMMARY
+        echo "- **Environment**: ${{ inputs.environment }}" >> $GITHUB_STEP_SUMMARY
+        echo "- **Release URL**: ${{ steps.create-release.outputs.html_url }}" >> $GITHUB_STEP_SUMMARY

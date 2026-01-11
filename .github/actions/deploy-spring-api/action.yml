@@ -1,0 +1,120 @@
+name: 'Deploy Spring API'
+description: 'Deploy Spring Boot applications to Azure App Service'
+author: 'Your Name'
+
+inputs:
+  azure-credentials:
+    description: 'Azure credentials JSON'
+    required: true
+  app-name:
+    description: 'Name of the Azure App Service'
+    required: true
+  resource-group:
+    description: 'Azure Resource Group name'
+    required: true
+  package-path:
+    description: 'Path to the JAR/WAR file'
+    required: true
+  environment:
+    description: 'Deployment environment (dev, staging, prod)'
+    required: true
+  java-version:
+    description: 'Java version'
+    required: false
+    default: '17'
+  run-tests:
+    description: 'Run tests before deployment'
+    required: false
+    default: 'true'
+  slot-name:
+    description: 'Deployment slot name (empty for production slot)'
+    required: false
+    default: ''
+  build-tool:
+    description: 'Build tool to use (maven or gradle)'
+    required: false
+    default: 'maven'
+
+outputs:
+  deployment-url:
+    description: 'URL of the deployed application'
+    value: ${{ steps.deploy.outputs.webapp-url }}
+  deployment-status:
+    description: 'Status of the deployment'
+    value: ${{ steps.deploy.outcome }}
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Setup Java
+      uses: actions/setup-java@v4
+      with:
+        java-version: ${{ inputs.java-version }}
+        distribution: 'temurin'
+        cache: ${{ inputs.build-tool }}
+
+    - name: Build with Maven
+      if: inputs.build-tool == 'maven'
+      shell: bash
+      run: |
+        if [ "${{ inputs.run-tests }}" == "true" ]; then
+          mvn clean package -DskipTests=false
+        else
+          mvn clean package -DskipTests=true
+        fi
+
+    - name: Build with Gradle
+      if: inputs.build-tool == 'gradle'
+      shell: bash
+      run: |
+        if [ "${{ inputs.run-tests }}" == "true" ]; then
+          ./gradlew clean build
+        else
+          ./gradlew clean build -x test
+        fi
+
+    - name: Azure Login
+      uses: azure/login@v1
+      with:
+        creds: ${{ inputs.azure-credentials }}
+
+    - name: Deploy to Azure App Service (Production Slot)
+      if: inputs.slot-name == ''
+      id: deploy-prod
+      uses: azure/webapps-deploy@v2
+      with:
+        app-name: ${{ inputs.app-name }}
+        package: ${{ inputs.package-path }}
+
+    - name: Deploy to Azure App Service (Deployment Slot)
+      if: inputs.slot-name != ''
+      id: deploy-slot
+      uses: azure/webapps-deploy@v2
+      with:
+        app-name: ${{ inputs.app-name }}
+        slot-name: ${{ inputs.slot-name }}
+        package: ${{ inputs.package-path }}
+
+    - name: Set deployment output
+      id: deploy
+      shell: bash
+      run: |
+        if [ "${{ inputs.slot-name }}" == "" ]; then
+          echo "webapp-url=https://${{ inputs.app-name }}.azurewebsites.net" >> $GITHUB_OUTPUT
+        else
+          echo "webapp-url=https://${{ inputs.app-name }}-${{ inputs.slot-name }}.azurewebsites.net" >> $GITHUB_OUTPUT
+        fi
+
+    - name: Deployment Summary
+      shell: bash
+      run: |
+        echo "### Deployment Summary :rocket:" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "- **App Service**: ${{ inputs.app-name }}" >> $GITHUB_STEP_SUMMARY
+        echo "- **Environment**: ${{ inputs.environment }}" >> $GITHUB_STEP_SUMMARY
+        echo "- **Resource Group**: ${{ inputs.resource-group }}" >> $GITHUB_STEP_SUMMARY
+        if [ "${{ inputs.slot-name }}" != "" ]; then
+          echo "- **Slot**: ${{ inputs.slot-name }}" >> $GITHUB_STEP_SUMMARY
+        fi
+        echo "- **Java Version**: ${{ inputs.java-version }}" >> $GITHUB_STEP_SUMMARY
+        echo "- **Status**: ✅ Success" >> $GITHUB_STEP_SUMMARY

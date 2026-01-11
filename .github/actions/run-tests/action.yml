@@ -1,0 +1,101 @@
+name: 'Run Tests'
+description: 'Run tests for Node.js or Java applications'
+author: 'Your Name'
+
+inputs:
+  project-type:
+    description: 'Type of project (nodejs, java-maven, java-gradle)'
+    required: true
+  working-directory:
+    description: 'Working directory for the tests'
+    required: false
+    default: '.'
+  node-version:
+    description: 'Node.js version (for Node.js projects)'
+    required: false
+    default: '18.x'
+  java-version:
+    description: 'Java version (for Java projects)'
+    required: false
+    default: '17'
+  coverage-report:
+    description: 'Generate coverage report'
+    required: false
+    default: 'true'
+  fail-on-error:
+    description: 'Fail the workflow if tests fail'
+    required: false
+    default: 'true'
+
+outputs:
+  test-result:
+    description: 'Test execution result'
+    value: ${{ steps.test.outcome }}
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Setup Node.js
+      if: inputs.project-type == 'nodejs'
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ inputs.node-version }}
+        cache: 'npm'
+
+    - name: Setup Java
+      if: inputs.project-type == 'java-maven' || inputs.project-type == 'java-gradle'
+      uses: actions/setup-java@v4
+      with:
+        java-version: ${{ inputs.java-version }}
+        distribution: 'temurin'
+
+    - name: Install Node.js dependencies
+      if: inputs.project-type == 'nodejs'
+      shell: bash
+      working-directory: ${{ inputs.working-directory }}
+      run: npm ci
+
+    - name: Run Node.js tests
+      if: inputs.project-type == 'nodejs'
+      id: test-nodejs
+      shell: bash
+      working-directory: ${{ inputs.working-directory }}
+      run: |
+        if [ "${{ inputs.coverage-report }}" == "true" ]; then
+          npm run test -- --coverage || [ "${{ inputs.fail-on-error }}" == "false" ]
+        else
+          npm test || [ "${{ inputs.fail-on-error }}" == "false" ]
+        fi
+
+    - name: Run Maven tests
+      if: inputs.project-type == 'java-maven'
+      id: test-maven
+      shell: bash
+      working-directory: ${{ inputs.working-directory }}
+      run: |
+        mvn test || [ "${{ inputs.fail-on-error }}" == "false" ]
+
+    - name: Run Gradle tests
+      if: inputs.project-type == 'java-gradle'
+      id: test-gradle
+      shell: bash
+      working-directory: ${{ inputs.working-directory }}
+      run: |
+        ./gradlew test || [ "${{ inputs.fail-on-error }}" == "false" ]
+
+    - name: Set test result
+      id: test
+      shell: bash
+      run: |
+        echo "Tests completed" >> $GITHUB_STEP_SUMMARY
+
+    - name: Upload test results
+      if: always()
+      uses: actions/upload-artifact@v3
+      with:
+        name: test-results
+        path: |
+          **/target/surefire-reports/
+          **/build/test-results/
+          **/coverage/
+          **/test-results/

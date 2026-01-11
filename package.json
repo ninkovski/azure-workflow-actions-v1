@@ -1,0 +1,19 @@
+{
+  "name": "notify-deployment",
+  "version": "1.0.0",
+  "description": "GitHub Action to notify deployment status via Teams or Email",
+  "main": "dist/index.js",
+  "license": "MIT",
+  "scripts": {
+    "build": "npx ncc build src/index.js -o dist"
+  },
+  "dependencies": {
+    "@actions/core": "^1.11.1",
+    "@actions/github": "^6.0.0",
+    "node-fetch": "^3.3.2",
+    "nodemailer": "^6.9.13"
+  },
+  "devDependencies": {
+    "@vercel/ncc": "^0.38.1"
+  }
+}
