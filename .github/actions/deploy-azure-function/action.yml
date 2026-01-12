@@ -52,10 +52,39 @@ runs:
       with:
         node-version: ${{ inputs.node-version }}
 
-    - name: Install dependencies
+    - name: Check if package-lock.json exists
+      id: check-lock
+      shell: bash
+      working-directory: ${{ inputs.package-path }}
+      run: |
+        if [ -f "package-lock.json" ]; then
+          echo "lock-exists=true" >> $GITHUB_OUTPUT
+        else
+          echo "lock-exists=false" >> $GITHUB_OUTPUT
+        fi
+
+    - name: Install dependencies (with npm ci - using lock file)
+      if: steps.check-lock.outputs.lock-exists == 'true'
       shell: bash
       working-directory: ${{ inputs.package-path }}
       run: npm ci --production
+
+    - name: Install dependencies (with npm install - no lock file)
+      if: steps.check-lock.outputs.lock-exists == 'false'
+      shell: bash
+      working-directory: ${{ inputs.package-path }}
+      run: npm install --production
+
+    - name: Commit package-lock.json if newly generated
+      if: steps.check-lock.outputs.lock-exists == 'false'
+      shell: bash
+      run: |
+        cd ${{ inputs.package-path }}
+        git config --local user.email "github-actions[bot]@github.com"
+        git config --local user.name "github-actions[bot]"
+        git add package-lock.json
+        git commit -m "chore: add package-lock.json from ${{ inputs.environment }} environment [skip ci]" || true
+        git push || echo "Warning: Could not push changes"
 
     - name: Run tests
       if: inputs.run-tests == 'true'

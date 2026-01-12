@@ -269,6 +269,52 @@ Ver [EXAMPLES.md](EXAMPLES.md) para ejemplos detallados de:
 
 MIT License - ver [LICENSE](LICENSE) para más detalles
 
+## � Gestión Automática de `package-lock.json`
+
+### Cómo Funciona
+
+Las actions de Node.js (`deploy-azure-function` y `run-tests`) detectan automáticamente si existe `package-lock.json`:
+
+```
+┌─ Primera Ejecución (Dev) ─────────────────────┐
+│                                               │
+│ 1. No existe package-lock.json                │
+│ 2. npm install --production (genera lock)     │
+│ 3. ✅ Commit automático de package-lock.json  │
+│ 4. Git push                                   │
+│                                               │
+└───────────────────────────────────────────────┘
+                      ↓
+┌─ Ejecuciones Siguientes (Staging/Prod) ──────┐
+│                                               │
+│ 1. ✓ Existe package-lock.json (en git)       │
+│ 2. npm ci --production (rápido, seguro)      │
+│ 3. Usa versiones exactas del lock            │
+│                                               │
+└───────────────────────────────────────────────┘
+```
+
+### Flujo Típico
+
+1. **En Development**: 
+   - Desarrollador hace push sin `package-lock.json`
+   - GitHub Actions lo genera automáticamente
+   - Lo commitea al repositorio
+   - Los tests usan ese lock file
+
+2. **En Staging/Production**:
+   - `package-lock.json` ya existe
+   - Se usa `npm ci` (más rápido y confiable)
+   - Instala exactamente lo que estaba en dev
+
+### Ventajas
+
+✅ **Consistencia**: Mismo `node_modules` en todos los ambientes  
+✅ **Seguridad**: `npm ci` falla si hay inconsistencias  
+✅ **Velocidad**: No necesita resolver dependencias en cada deploy  
+✅ **Automatización**: No requiere configuración manual  
+✅ **Git-friendly**: El lock file queda versionado automáticamente  
+
 ## 🔗 Links Útiles
 
 - [GitHub Actions Documentation](https://docs.github.com/en/actions)

@@ -55,6 +55,7 @@ runs:
     - name: Build with Maven
       if: inputs.build-tool == 'maven'
       shell: bash
+      working-directory: ${{ inputs.package-path }}
       run: |
         if [ "${{ inputs.run-tests }}" == "true" ]; then
           mvn clean package -DskipTests=false
@@ -65,6 +66,7 @@ runs:
     - name: Build with Gradle
       if: inputs.build-tool == 'gradle'
       shell: bash
+      working-directory: ${{ inputs.package-path }}
       run: |
         if [ "${{ inputs.run-tests }}" == "true" ]; then
           ./gradlew clean build
