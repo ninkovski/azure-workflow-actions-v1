@@ -3,9 +3,6 @@ description: 'Deploy Azure Functions with configurable options per environment'
 author: 'Your Name'
 
 inputs:
-  azure-credentials:
-    description: 'Azure credentials JSON'
-    required: true
   function-app-name:
     description: 'Name of the Azure Function App'
     required: true
@@ -100,7 +97,7 @@ runs:
     - name: Azure Login
       uses: azure/login@v1
       with:
-        creds: ${{ inputs.azure-credentials }}
+        creds: ${{ env.AZURE_CREDENTIALS }}
 
     - name: Deploy to Azure Function App (Production Slot)
       if: inputs.slot-name == ''

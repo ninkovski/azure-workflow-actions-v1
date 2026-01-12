@@ -54,25 +54,6 @@ on:
         required: false
         type: boolean
         default: false
-    secrets:
-      AZURE_CREDENTIALS:
-        description: 'Azure credentials'
-        required: true
-      NOTIFICATION_WEBHOOK_URL:
-        description: 'Webhook URL for Teams notifications'
-        required: false
-      EMAIL_TO:
-        description: 'Email address for notifications'
-        required: false
-      SMTP_SERVER:
-        description: 'SMTP server for email notifications'
-        required: false
-      SMTP_USERNAME:
-        description: 'SMTP username'
-        required: false
-      SMTP_PASSWORD:
-        description: 'SMTP password'
-        required: false
     outputs:
       deployment-url:
         description: 'Deployed API URL'
@@ -110,8 +91,9 @@ jobs:
       - name: Deploy Spring API
         id: deploy-api
         uses: ./.github-actions/.github/actions/deploy-spring-api
+        env:
+          AZURE_CREDENTIALS: ${{ secrets.AZURE_CREDENTIALS }}
         with:
-          azure-credentials: ${{ secrets.AZURE_CREDENTIALS }}
           app-name: ${{ inputs.app-name }}
           resource-group: ${{ inputs.resource-group }}
           package-path: ${{ inputs.package-path }}
