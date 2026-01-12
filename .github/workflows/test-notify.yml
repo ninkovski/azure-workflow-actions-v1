@@ -38,7 +38,7 @@ jobs:
         run: npm install
 
       - name: Send Test Email Notification
-        uses: ./.github/actions/notify-deployment
+        uses: ${{ github.repository_owner }}/${{ github.event.repository.name }}/.github/actions/notify-deployment
         env:
           EMAIL_TO: ${{ secrets.EMAIL_TO }}
           EMAIL_FROM: ${{ secrets.EMAIL_FROM }}
