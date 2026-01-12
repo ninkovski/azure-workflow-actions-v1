@@ -51,7 +51,6 @@ runs:
       with:
         java-version: ${{ inputs.java-version }}
         distribution: 'temurin'
-        cache: ${{ inputs.build-tool }}
 
     - name: Build with Maven
       if: inputs.build-tool == 'maven'

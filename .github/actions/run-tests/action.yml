@@ -40,7 +40,6 @@ runs:
       uses: actions/setup-node@v4
       with:
         node-version: ${{ inputs.node-version }}
-        cache: 'npm'
 
     - name: Setup Java
       if: inputs.project-type == 'java-maven' || inputs.project-type == 'java-gradle'
