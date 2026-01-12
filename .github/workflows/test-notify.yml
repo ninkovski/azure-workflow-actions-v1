@@ -29,6 +29,13 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Checkout actions repository
+        uses: actions/checkout@v4
+        with:
+          repository: ninkovski/azure-workflow-actions-v1
+          path: .github-actions
+          ref: main
+
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
@@ -38,7 +45,7 @@ jobs:
         run: npm install
 
       - name: Send Test Email Notification
-        uses: ${{ github.repository_owner }}/${{ github.event.repository.name }}/.github/actions/notify-deployment
+        uses: ./.github-actions/.github/actions/notify-deployment
         env:
           EMAIL_TO: ${{ secrets.EMAIL_TO }}
           EMAIL_FROM: ${{ secrets.EMAIL_FROM }}

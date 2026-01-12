@@ -93,16 +93,23 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      - name: Checkout actions repository
+        uses: actions/checkout@v4
+        with:
+          repository: ninkovski/azure-workflow-actions-v1
+          path: .github-actions
+          ref: main
+
       - name: Run tests
         if: inputs.run-tests
-        uses: ${{ github.repository_owner }}/${{ github.event.repository.name }}/.github/actions/run-tests
+        uses: ./.github-actions/.github/actions/run-tests
         with:
           project-type: ${{ inputs.build-tool == 'maven' && 'java-maven' || 'java-gradle' }}
           java-version: ${{ inputs.java-version }}
 
       - name: Deploy Spring API
         id: deploy-api
-        uses: ${{ github.repository_owner }}/${{ github.event.repository.name }}/.github/actions/deploy-spring-api
+        uses: ./.github-actions/.github/actions/deploy-spring-api
         with:
           azure-credentials: ${{ secrets.AZURE_CREDENTIALS }}
           app-name: ${{ inputs.app-name }}
@@ -116,7 +123,7 @@ jobs:
 
       - name: Send Success Notification
         if: success() && inputs.enable-notifications
-        uses: ${{ github.repository_owner }}/${{ github.event.repository.name }}/.github/actions/notify-deployment
+        uses: ./.github-actions/.github/actions/notify-deployment
         with:
           notification-type: ${{ inputs.notification-type }}
           webhook-url: ${{ secrets.NOTIFICATION_WEBHOOK_URL }}
@@ -131,7 +138,7 @@ jobs:
 
       - name: Send Failure Notification
         if: failure() && inputs.enable-notifications
-        uses: ${{ github.repository_owner }}/${{ github.event.repository.name }}/.github/actions/notify-deployment
+        uses: ./.github-actions/.github/actions/notify-deployment
         with:
           notification-type: ${{ inputs.notification-type }}
           webhook-url: ${{ secrets.NOTIFICATION_WEBHOOK_URL }}
@@ -152,8 +159,15 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      - name: Checkout actions repository
+        uses: actions/checkout@v4
+        with:
+          repository: ninkovski/azure-workflow-actions-v1
+          path: .github-actions
+          ref: main
+
       - name: Create Release
-        uses: ${{ github.repository_owner }}/${{ github.event.repository.name }}/.github/actions/create-release
+        uses: ./.github-actions/.github/actions/create-release
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           environment: ${{ inputs.environment }}
